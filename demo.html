@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+</head>
+
+<body>
+
+  <!-- 帳密登入 -->
+  <div>
+    <input type="email" id="email">
+    <input type="password" id="password">
+    <button type="button" id="login">登入</button>
+  </div>
+
+  <!-- API 功能 -->
+  <div>
+    <button type="button" id="check">確認是否登入</button>
+    <button type="button" id="getProducts">取得後台的產品列表</button>
+    <button type="button" id="addProduct">新增一個產品</button>
+    <button type="button" id="delProduct">刪除一個產品</button>
+  </div>
+
+  <div>
+    <input type="file" class="form-control" id="file" placeholder="請輸入圖片連結" />
+  </div>
+
+  <script>
+    const url = 'https://vue3-course-api.hexschool.io/v2'; // 請加入站點
+    const path = 'jiangs2023'; // 請加入個人 API Path
+
+    // #1 如何串接 API 資料
+    const emailInput = document.querySelector('#email');
+    const pwInput = document.querySelector('#password');
+    const loginBtn = document.querySelector('#login');
+    const checkBtn = document.querySelector('#check');
+    const getProductsBtn = document.querySelector('#getProducts');
+    const addProductBtn = document.querySelector('#addProduct');
+    const delProductBtn = document.querySelector('#delProduct');
+    const fileInput = document.querySelector('#file');
+
+    loginBtn.addEventListener('click', login);
+
+    function login() {
+      const username = emailInput.value;
+      const password = pwInput.value;
+
+      const user = {
+        username,
+        password
+      }
+
+      // #2 發送 API 至遠端並登入（並儲存 Token）
+      axios.post(`${url}/admin/signin`, user)
+        // 成功 
+        .then(res => {
+          console.log(res);
+          // 運用 解構 型式取出資料
+          const { token, expired } = res.data;
+          console.log(token, expired);
+
+          // 儲存 token 跟 expires，這裡是使用樣板字面值
+          // jiangvu3 也就是 cookie 再存起來時 token 要用什麼名稱，所以是自訂義名稱，可以改為自己的
+          // expires 是一般的時間格式，unix timestemp 用 new Date 轉型 
+          document.cookie = `jiangvue3=${token};expires=${new Date(expired)};`;
+        })
+        // 失敗
+        .catch(error => {
+          console.dir(error);
+        })
+    }
+
+    checkBtn.addEventListener('click', checkLogin);
+    function checkLogin(params) {
+      // #3 取得 Token（Token 僅需要設定一次）
+      const token = document.cookie.replace(/(?:(?:^|.*;\s*)jiangvue3\s*=\s*([^;]*).*$)|^.*$/, '$1');
+      console.log(token);
+      axios.defaults.headers.common['Authorization'] = token;
+      // #4  確認是否登入
+      axios.post(`${url}/api/user/check`)
+        .then(res => {
+          console.log(res.data);
+
+        })
+        .catch(error => {
+          console.log(error);
+        })
+    }
+
+    getProductsBtn.addEventListener('click', getProducts)
+    function getProducts() {
+      // #5 取得後台產品列表
+      axios.get(`${url}/api/${path}/admin/products`)
+        .then(res => {
+          console.log(res);
+        })
+        .catch(error => {
+          console.log(error);
+        })
+    }
+
+
+    addProductBtn.addEventListener('click', addProduct)
+    function addProduct() {
+
+      const product = {
+        data: {
+          title: '[賣]動物園造型衣服6',
+          category: '衣服2',
+          origin_price: 100,
+          price: 300,
+          unit: '個',
+          description: 'Sit down please 名設計師設計',
+          content: '這是內容',
+          is_enabled: 1,
+          imageUrl: 'https://images.unsplash.com/photo-1573662012516-5cb4399006e7?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=1267&q=80'
+        }
+      }
+
+      // #6 新增一個產品
+      axios.post(`${url}/api/${path}/admin/product`, product)
+        .then(res => {
+          console.log(res.data);
+        })
+        .catch(error => {
+          console.log(error);
+        })
+    }
+
+
+    delProductBtn.addEventListener('click', removeProduct)
+    function removeProduct() {
+      // #7 刪除一個產品 這裡帶入產品 id
+      axios.delete(`${url}/api/${path}/admin/product/-NJs-qKLhSlM1aLPKfKi`)
+        .then(res => {
+          console.log(res.data);
+        })
+        .catch(error => {
+          console.log(error);
+        })
+    }
+    // 當把檔案丟到 input 的時候會觸發這個  change 事件的函式 
+    fileInput.addEventListener('change', upload);
+    function upload() {
+      // 要登入狀態才能順利上傳 ，所以必須要有 token
+      const token = document.cookie.replace(/(?:(?:^|.*;\s*)jiangvue3\s*=\s*([^;]*).*$)|^.*$/, '$1');
+      console.log(token);
+      axios.defaults.headers.common['Authorization'] = token;
+      // #1 撰寫上傳的 API 事件
+      // 先查看 change 觸發後， fileInput 擷取到哪些內容
+      console.dir(fileInput);
+      // 檔案會在 files 類陣列中的第 0 個
+      const file = fileInput.files[0]
+      // 這個物件就是要上傳的檔案
+      console.log(file);
+      // 如果要建立 formData 要用 new formData 用來產生表單格式
+      const formData = new FormData();
+      // file-to-upload 要夾帶的欄位，要把欄位對應到 file
+      formData.append('file-to-upload', file)
+
+      axios.post(`${url}/api/${path}/admin/upload`, formData)
+        .then(res => {
+          console.log(res.data);
+          console.log(res.data.imageUrl);
+        })
+        .catch(error => {
+          console.dir(error.response);
+        })
+
+    }
+
+  </script>
+</body>
+
+</html>
